@@ -55,7 +55,7 @@ public class MatrixTest
         Matrix m2 = new SparseMatrix("m2.txt");
         Matrix expected = new SparseMatrix("result.txt");
         Matrix m3 = m1.threadmul(m2);
-        assertEquals(expected, m3);
+        assertEquals(expected, m1.mul(m2));
     }
 }
 
