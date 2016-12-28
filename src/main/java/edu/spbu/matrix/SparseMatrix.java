@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
 public class SparseMatrix implements Matrix {
     public HashMap<Integer, HashMap<Integer, Double>> map;
@@ -16,15 +18,16 @@ public class SparseMatrix implements Matrix {
     public SparseMatrix(String fileName) {
         col = 0;
         row = 0;
-        HashMap<Integer, HashMap<Integer, Double>> result = new HashMap<>();
+        HashMap<Integer, HashMap<Integer, Double>> result = new HashMap<Integer, HashMap<Integer, Double>>();
         try {
             File f = new File(fileName);
             Scanner input = new Scanner(f);
             String[] line = {};
-            HashMap<Integer, Double> tmp = new HashMap<>();
+            HashMap<Integer, Double> tmp = new HashMap<Integer, Double>();
 
             while (input.hasNextLine()) {
-                tmp = new HashMap<>();
+                tmp = new HashMap<Integer, Double
+                        >();
                 line = input.nextLine().split(" ");
                 for (int i=0; i<line.length; i++) {
                     if (line[i]!="0") {
@@ -58,11 +61,11 @@ public class SparseMatrix implements Matrix {
     }
 
     public SparseMatrix trans() {
-        HashMap<Integer, HashMap<Integer, Double>> result = new HashMap<>();
+        HashMap<Integer, HashMap<Integer, Double>> result = new HashMap<Integer, HashMap<Integer, Double>>();
         for (HashMap.Entry<Integer, HashMap<Integer, Double>> row : map.entrySet()){
             for (HashMap.Entry<Integer, Double> elem : row.getValue().entrySet()) {
                 if (!result.containsKey(elem.getKey())) {
-                    result.put(elem.getKey(), new HashMap<>());
+                    result.put(elem.getKey(), new HashMap<Integer, Double>());
                 }
                 result.get(elem.getKey()).put(row.getKey(), elem.getValue());
             }
@@ -72,7 +75,7 @@ public class SparseMatrix implements Matrix {
 
     private SparseMatrix mul(SparseMatrix s) {
         SparseMatrix sT = s.trans();
-        HashMap<Integer, HashMap<Integer, Double>> result = new HashMap<>();
+        HashMap<Integer, HashMap<Integer, Double>> result = new HashMap<Integer, HashMap<Integer, Double>>();
         double sum = 0;
         for (HashMap.Entry<Integer, HashMap<Integer, Double>> row1 : map.entrySet()){
             for (HashMap.Entry<Integer, HashMap<Integer, Double>> row2 : sT.map.entrySet()) {
@@ -83,7 +86,7 @@ public class SparseMatrix implements Matrix {
                 }
                 if (sum != 0) {
                     if (!result.containsKey(row1.getKey())) {
-                        result.put(row1.getKey(), new HashMap<>());
+                        result.put(row1.getKey(), new HashMap<Integer, Double>());
                     }
                     result.get(row1.getKey()).put(row2.getKey(), sum);
                 }
@@ -136,72 +139,88 @@ public class SparseMatrix implements Matrix {
         }
     }
 
+
+
+
+
     //---------------------------------------------
     public Matrix threadmul(Matrix o){
-        SparseMatrix s = (SparseMatrix)o;
+        final SparseMatrix s = (SparseMatrix)o;
+
+
 
         class Dispatcher {
-            int value = 0;
-            public int next() {
-                synchronized (this) {
-                    return value++;
-                }
+            Iterator <Map.Entry<Integer, HashMap<Integer, Double>>> rrow = map.entrySet().iterator();
+            public Map.Entry<Integer, HashMap<Integer, Double>> next(){
+                return rrow.next();
             }
         }
 
-        Dispatcher dispatcher = new Dispatcher();
 
 
         SparseMatrix transedMatrix = s.trans();
-        ConcurrentHashMap<Integer, HashMap<Integer, Double>> cmap = new ConcurrentHashMap<>();
+        ConcurrentHashMap<Integer, HashMap<Integer, Double>> cmap = new ConcurrentHashMap<Integer, HashMap<Integer, Double>>();
         for (int i = 0; i < row; i++) {
             if (map.containsKey(i)) {
-                cmap.put(i, new HashMap<>(map.get(i)));
+                cmap.put(i, new HashMap<Integer, Double>(map.get(i)));
             }
         }
 
-        ConcurrentHashMap<Integer, HashMap<Integer, Double>> maph = new ConcurrentHashMap<>();
+        ConcurrentHashMap<Integer, HashMap<Integer, Double>> maph = new ConcurrentHashMap<Integer, HashMap<Integer, Double>>();
         for (int i = 0; i < transedMatrix.row; i++) {
             if (transedMatrix.map.containsKey(i)) {
                 maph.put(i, transedMatrix.map.get(i));
             }
         }
 
-        HashMap<Integer, HashMap<Integer, Double>> result = new HashMap<>();
-        ConcurrentHashMap<Integer, HashMap<Integer, Double>> cresult = new ConcurrentHashMap<>();
+        final Dispatcher dispatcher = new Dispatcher();
+
+        final HashMap<Integer, HashMap<Integer, Double>> result = new HashMap<Integer, HashMap<Integer, Double>>();
+        ConcurrentHashMap<Integer, HashMap<Integer, Double>> cresult = new ConcurrentHashMap<Integer, HashMap<Integer, Double>>();
+        Iterator<Map.Entry<Integer, HashMap<Integer, Double>>> iter = cresult.entrySet().iterator();
         double sum = 0;
         class MultRow implements Runnable {
             Thread thread;
-            HashMap<Integer, Double> tmp = new HashMap<>();
+            HashMap<Integer, Double> tmp = new HashMap<Integer, Double>();
 
             public MultRow(String s) {
                 thread = new Thread(this, s);
-                thread.start();
-            }
-            public void run() {
-                int i;
-                while ((i = dispatcher.next()) < row) {
-                    double sum = 0;
-                    if (map.containsKey(i)) {
-                        tmp = new HashMap<>();
-                        for (int j = 0; j < transedMatrix.row; j++) {
-                            if (maph.containsKey(j)) {
-                                for (int k = 0; k < transedMatrix.col; k++) {
-                                    if (maph.get(j).containsKey(k) && map.get(i).containsKey(k)) {
-                                        sum += maph.get(j).get(k) * map.get(i).get(k);
-                                    }
-                                }
-                                if (sum != 0) {
-                                    tmp.put(j, sum);
-                                }
-                                sum = 0;
+           }
+
+
+
+            public SparseMatrix mulPar(SparseMatrix s) {
+                SparseMatrix sT = s.trans();
+                HashMap<Integer, HashMap<Integer, Double>> cresult = new HashMap<Integer, HashMap<Integer, Double>>();
+                double sum = 0;
+                Map.Entry<Integer, HashMap<Integer, Double>> row1;
+                while ( (row1 = dispatcher.next()) != null) {
+                    for (HashMap.Entry<Integer, HashMap<Integer, Double>> row2 : sT.map.entrySet()) {
+                        for (HashMap.Entry<Integer, Double> elem : row1.getValue().entrySet()) {
+                            if (row2.getValue().containsKey(elem.getKey())) {
+                                sum += elem.getValue() * row2.getValue().get(elem.getKey());
                             }
                         }
-                        cresult.put(i, tmp);
+                        if (sum != 0) {
+                            if (!result.containsKey(row1.getKey())) {
+                                result.put(row1.getKey(), new HashMap<Integer, Double>());
+                            }
+                            result.get(row1.getKey()).put(row2.getKey(), sum);
+                        }
+                        sum = 0;
                     }
                 }
+                return new SparseMatrix(cresult, row, s.col);
             }
+
+            public void run() {
+                this.mulPar(s);
+            }
+
         }
+
+
+
 
         MultRow one = new MultRow("one");
         MultRow two = new MultRow("two");
@@ -218,9 +237,9 @@ public class SparseMatrix implements Matrix {
             e.printStackTrace();
         }
 
-        HashMap<Integer, Double> tmp = new HashMap<>();
+        HashMap<Integer, Double> tmp = new HashMap<Integer, Double>();
         for (ConcurrentHashMap.Entry<Integer, HashMap<Integer, Double>> row1 : cresult.entrySet()){
-            tmp = new HashMap<>();
+            tmp = new HashMap<Integer, Double>();
             for (HashMap.Entry<Integer, Double> row2 : row1.getValue().entrySet()) {
                 tmp.put(row2.getKey(), row2.getValue());
             }
