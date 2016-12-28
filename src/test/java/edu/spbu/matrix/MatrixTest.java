@@ -6,7 +6,7 @@ import static org.junit.Assert.assertEquals;
 
 public class MatrixTest
 {
-    /**
+    /*
      * ожидается 4 таких теста
      */
     @Test
