@@ -15,7 +15,7 @@ public class DenseMatrix implements Matrix {
             File f = new File(fileName);
             Scanner input = new Scanner(f);
             String[] line;
-            ArrayList<Double[]> a = new ArrayList<>();
+            ArrayList<Double[]> a = new ArrayList<Double[]>();
             Double[] tmp = {};
             while (input.hasNextLine()) {
                 line = input.nextLine().split(" ");
@@ -121,9 +121,9 @@ public class DenseMatrix implements Matrix {
              }
          }
 
-         double[][] result = new double[data.length][object.data[0].length];
-         double[][] transedmatrix = object.trans();
-         Dispatcher dispatcher = new Dispatcher();
+         final double[][] result = new double[data.length][object.data[0].length];
+         final double[][] transedmatrix = object.trans();
+         final Dispatcher dispatcher = new Dispatcher();
 
          class MultRow implements Runnable {
              Thread thread;
